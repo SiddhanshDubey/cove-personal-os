@@ -1,0 +1,5 @@
+- [ ] Build COVE mobile-first home screen and state machine
+- [ ] Add boot, demo email flow, confirmation, and result states
+- [ ] Add hidden utility sheets for integrations, privacy, and activity
+- [ ] Establish COVE dark/cyan design tokens and motion styles
+- [ ] Verify the preview across desktop and Android-sized viewports
