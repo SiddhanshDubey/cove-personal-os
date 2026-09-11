@@ -1,26 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Activity,
-  BatteryMedium,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  CircleAlert,
-  Clock3,
-  LockKeyhole,
-  Mail,
-  Mic,
-  MoreHorizontal,
-  Radio,
-  Send,
-  Settings2,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  UserRound,
-  Wifi,
-  X,
-} from "lucide-react";
+import { BatteryMedium, Check, CircleAlert, Clock3, LockKeyhole, Mail, Mic, Radio, Send, Settings2, ShieldCheck, Smartphone, Sparkles, UserRound, Wifi, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";

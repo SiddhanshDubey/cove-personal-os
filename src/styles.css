@@ -54,6 +54,8 @@
   --color-warning: var(--warning);
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+  --shadow-cove: 0 0 50px -8px color-mix(in oklab, var(--color-cove) 60%, transparent);
+  --shadow-cove-dot: 0 0 22px color-mix(in oklab, var(--color-cove) 72%, transparent);
 }
 
 :root {
@@ -138,6 +140,9 @@
 .sheet-in { animation: sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 .screen-in { animation: screen-in 500ms ease-out both; }
 .waveform-bar { animation: waveform 900ms ease-in-out infinite; transform-origin: center; }
+
+.shadow-cove { box-shadow: var(--shadow-cove); }
+.shadow-cove-dot { box-shadow: var(--shadow-cove-dot); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
