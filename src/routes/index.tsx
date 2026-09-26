@@ -3,22 +3,24 @@ import { BatteryMedium, Check, CircleAlert, Clock3, LockKeyhole, Mail, Mic, Radi
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { runAgentCommand } from "@/server/agent-fn";
 
 type CoveState = "idle" | "listening" | "thinking" | "executing" | "result" | "confirm" | "success" | "cancelled";
 type Panel = "integrations" | "privacy" | "activity" | null;
+type AgentRequestState = "idle" | "loading" | "success" | "error";
 
 const activityItems = [
-  { time: "18:39", label: "Calendar checked", icon: Clock3 },
-  { time: "18:31", label: "Reminder created", icon: Check },
-  { time: "18:20", label: "Opened Gmail", icon: Mail },
+  { time: "Live", label: "Current time tool available", icon: Clock3 },
+  { time: "Demo", label: "Email flow is simulated", icon: Mail },
+  { time: "—", label: "No external services connected", icon: Wifi },
 ];
 
 const integrations = [
-  { name: "Gmail", state: "Connected", tone: "text-cove", icon: Mail },
-  { name: "Contacts", state: "Permission required", tone: "text-warning", icon: UserRound },
-  { name: "Calendar", state: "Connected", tone: "text-cove", icon: Clock3 },
+  { name: "Gmail", state: "Not connected", tone: "text-haze/70", icon: Mail },
+  { name: "Contacts", state: "Not connected", tone: "text-haze/70", icon: UserRound },
+  { name: "Calendar", state: "Not connected", tone: "text-haze/70", icon: Clock3 },
   { name: "Spotify", state: "Not connected", tone: "text-haze/70", icon: Radio },
-  { name: "WhatsApp", state: "Available", tone: "text-haze/70", icon: Smartphone },
+  { name: "WhatsApp", state: "Not connected", tone: "text-haze/70", icon: Smartphone },
 ];
 
 export const Route = createFileRoute("/")({
@@ -41,6 +43,8 @@ function CoveHome() {
   const [action, setAction] = useState("Ready");
   const [panel, setPanel] = useState<Panel>(null);
   const [time, setTime] = useState("18:42");
+  const [agentRequestState, setAgentRequestState] = useState<AgentRequestState>("idle");
+  const [agentMessage, setAgentMessage] = useState("");
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
@@ -120,6 +124,27 @@ function CoveHome() {
     }, 1300);
   };
 
+  const askForCurrentTime = async () => {
+    if (agentRequestState === "loading" || state !== "idle") return;
+
+    setAgentRequestState("loading");
+    setAgentMessage("Contacting COVE...");
+    try {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const response = await runAgentCommand({
+        data: {
+          message: "What time is it?",
+          ...(timeZone ? { timeZone } : {}),
+        },
+      });
+      setAgentRequestState("success");
+      setAgentMessage(response.message);
+    } catch {
+      setAgentRequestState("error");
+      setAgentMessage("COVE could not reach the server. Please try again.");
+    }
+  };
+
   if (booting) return <BootSequence />;
 
   const active = state !== "idle" && state !== "cancelled";
@@ -152,13 +177,25 @@ function CoveHome() {
                 <span className={`size-1.5 rounded-full ${active ? "bg-cove shadow-cove-dot" : "bg-cove-soft"}`} />
                 <p className="text-[11px] uppercase tracking-[0.3em] text-cove-soft">{action}</p>
               </div>
-              {state === "idle" && <p className="text-[10px] tracking-[0.18em] text-haze/55">Tap the core to speak</p>}
+              {state === "idle" && (
+                <>
+                  <p className="text-[10px] tracking-[0.18em] text-haze/55">Tap the core to run the email demo</p>
+                  <p className="text-[9px] uppercase tracking-[0.16em] text-haze/45">Simulated demo · Gmail is not connected</p>
+                </>
+              )}
               {(state === "listening" || state === "thinking") && <Waveform />}
               {state === "success" && <p className="text-[10px] tracking-[0.18em] text-success/80">Reply delivered</p>}
             </div>
 
             {state === "result" && <EmailResult onReply={draftReply} />}
             {state === "confirm" && <ReplyConfirmation onSend={sendReply} onCancel={cancelReply} />}
+            {state === "idle" && (
+              <LiveTimeCommand
+                requestState={agentRequestState}
+                message={agentMessage}
+                onRequest={askForCurrentTime}
+              />
+            )}
           </section>
 
           <div className="relative z-10 px-6 pb-4">
@@ -228,11 +265,48 @@ function Waveform() {
   );
 }
 
+function LiveTimeCommand({
+  requestState,
+  message,
+  onRequest,
+}: {
+  requestState: AgentRequestState;
+  message: string;
+  onRequest: () => void;
+}) {
+  const isLoading = requestState === "loading";
+
+  return (
+    <div className="screen-in mt-7 w-full max-w-[340px] rounded-2xl border border-cove/20 bg-graphite/55 p-4 text-center backdrop-blur-xl">
+      <p className="text-[10px] uppercase tracking-[0.25em] text-cove-soft">Live agent · current time</p>
+      <Button
+        variant="outline"
+        onClick={onRequest}
+        disabled={isLoading}
+        className="mt-3 h-9 w-full border-cove/35 bg-cove/10 text-[11px] uppercase tracking-[0.16em] text-cove hover:bg-cove/15 hover:text-cove"
+      >
+        {isLoading ? "Checking time..." : "Try: What time is it?"}
+      </Button>
+      {requestState !== "idle" && (
+        <p
+          className={
+            "mt-3 text-[11px] leading-relaxed " +
+            (requestState === "error" ? "text-warning" : "text-haze")
+          }
+          aria-live="polite"
+        >
+          {message}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function EmailResult({ onReply }: { onReply: () => void }) {
   return (
     <div className="screen-in mt-7 w-full max-w-[340px] rounded-2xl border border-cove/20 bg-graphite/55 p-4 backdrop-blur-xl">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-[0.25em] text-cove-soft">Gmail · result</span>
+        <span className="text-[10px] uppercase tracking-[0.25em] text-cove-soft">Email demo · simulated</span>
         <span className="text-[9px] tracking-widest text-haze/60">now</span>
       </div>
       <div className="mt-3 flex items-baseline justify-between">
@@ -241,7 +315,7 @@ function EmailResult({ onReply }: { onReply: () => void }) {
       </div>
       <p className="mt-1 text-[13px] leading-relaxed text-haze">“Call me when you're free.”</p>
       <div className="my-3 h-px w-full bg-edge/60" />
-      <p className="text-[10px] uppercase tracking-[0.25em] text-haze/70">Found in Gmail</p>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-haze/70">Demo content · Gmail is not connected</p>
       <Button variant="outline" onClick={onReply} className="mt-4 h-9 w-full border-cove/35 bg-cove/10 text-[11px] uppercase tracking-[0.2em] text-cove hover:bg-cove/15 hover:text-cove">Reply</Button>
     </div>
   );
@@ -291,7 +365,7 @@ function IntegrationsPanel() {
           <span className={`text-[10px] tracking-wide ${tone}`}>{state}</span>
         </div>
       ))}
-      <p className="pt-4 text-[10px] leading-relaxed text-haze/65">Connections are authorized independently. COVE never stores service passwords.</p>
+      <p className="pt-4 text-[10px] leading-relaxed text-haze/65">No third-party services are connected in this foundation build. COVE never stores service passwords.</p>
     </div>
   );
 }
@@ -335,7 +409,17 @@ function BootSequence() {
         <div className="mb-10 flex items-center gap-3"><span className="size-2 rounded-full bg-cove shadow-cove-dot" /><span className="font-display text-2xl tracking-[0.34em] text-cove">COVE</span></div>
         <p className="mb-7 text-[10px] uppercase tracking-[0.32em] text-haze/70">Initializing personal agent</p>
         <div className="space-y-3 border-l border-edge pl-5 text-[10px] tracking-[0.16em] text-haze">
-          {["Voice system ........ READY", "Agent core .......... READY", "Connected services ... READY", "Home layer ........... READY"].map((line, index) => <p key={line} className="boot-line" style={{ animationDelay: `${index * 360}ms` }}><span className="text-cove-soft">{line.slice(0, line.indexOf("READY"))}</span><span className="text-cove">READY</span></p>)}
+          {[
+            { label: "Voice system ........", value: "READY", tone: "text-cove" },
+            { label: "Agent route ..........", value: "READY", tone: "text-cove" },
+            { label: "Integrations .........", value: "NOT CONNECTED", tone: "text-haze/70" },
+            { label: "Home layer ...........", value: "READY", tone: "text-cove" },
+          ].map(({ label, value, tone }, index) => (
+            <p key={label} className="boot-line" style={{ animationDelay: String(index * 360) + "ms" }}>
+              <span className="text-cove-soft">{label} </span>
+              <span className={tone}>{value}</span>
+            </p>
+          ))}
         </div>
         <div className="mt-12 flex items-center gap-2 text-[10px] uppercase tracking-[0.26em] text-cove-soft"><Sparkles className="size-3" aria-hidden="true" /> Good evening.</div>
       </section>
